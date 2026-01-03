@@ -9,6 +9,17 @@ const app = {
 
     init: function () {
         this.loadDashboardStats();
+
+        // Reset Logic
+        const resetBtn = document.getElementById('resetBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (confirm('Kas oled kindel, et soovid ajaloo kustutada?')) {
+                    localStorage.removeItem('financeExamHistory');
+                    location.reload();
+                }
+            });
+        }
     },
 
     // --- Data Persistence ---
