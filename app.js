@@ -77,14 +77,15 @@ const app = {
     },
 
     // --- Data Persistence (Results) ---
-    saveResult: function (score, total, chapterStats) {
+    saveResult: function (score, total, chapterStats, durationSeconds = 0) {
         const result = {
             date: new Date().toISOString(),
             score: score,
             total: total,
             percentage: Math.round((score / total) * 100),
             chapterStats: chapterStats,
-            questionIds: this.state.userAnswers.map(ua => ua.questionId) // Save IDs for smart selection
+            questionIds: this.state.userAnswers.map(ua => ua.questionId),
+            durationSeconds: durationSeconds
         };
 
         let history = JSON.parse(localStorage.getItem('financeExamHistory') || '[]');
@@ -100,6 +101,23 @@ const app = {
 
             document.getElementById('totalExams').textContent = totalExams;
             document.getElementById('avgScore').textContent = avgScore + '%';
+            document.getElementById('totalExams').textContent = totalExams;
+            document.getElementById('avgScore').textContent = avgScore + '%';
+
+            // Calculate Average Time
+            let totalSeconds = 0;
+            let timeCount = 0;
+            history.forEach(h => {
+                if (h.durationSeconds) {
+                    totalSeconds += h.durationSeconds;
+                    timeCount++;
+                }
+            });
+            const avgSeconds = timeCount > 0 ? Math.floor(totalSeconds / timeCount) : 0;
+            const avgM = Math.floor(avgSeconds / 60);
+            const avgS = avgSeconds % 60;
+            document.getElementById('avgTime').textContent = `${avgM}m ${avgS}s`;
+
             document.getElementById('dashboardPreview').classList.remove('hidden');
         }
     },
@@ -113,8 +131,10 @@ const app = {
         this.state.currentQuestionIndex = 0;
         this.state.userAnswers = [];
 
+        // Set Start Time
+        this.state.startTime = Date.now();
         // Set Absolute End Time (90 mins from now)
-        this.state.targetEndTime = Date.now() + (90 * 60 * 1000);
+        this.state.targetEndTime = this.state.startTime + (90 * 60 * 1000);
         this.saveExamState();
 
         document.getElementById('startScreen').classList.add('hidden');
@@ -425,8 +445,17 @@ const app = {
             gradeEl.className = 'grade-badge ' + gradeClass;
         }
 
+        // Calculate Time Taken
+        const endTime = Date.now();
+        const durationSeconds = Math.floor((endTime - this.state.startTime) / 1000);
+
         // Save Stats
-        this.saveResult(totalScore, maxScore, chapterStats);
+        this.saveResult(totalScore, maxScore, chapterStats, durationSeconds);
+
+        // Show Time Taken
+        const mins = Math.floor(durationSeconds / 60);
+        const secs = durationSeconds % 60;
+        document.getElementById('finalTime').textContent = `${mins}m ${secs}s`;
 
         // Render Detailed Review List (New Overhaul)
         this.renderDetailedReview(totalScore, maxScore);
@@ -798,7 +827,13 @@ const app = {
     },
 
     renderTimeline: function (data) {
-        if (!data || !data.events) return "";
+        if (!data) return "";
+        // Toggle specific renderer
+        if (data.type === 'payment-timeline') {
+            return this.renderPaymentTimeline(data);
+        }
+
+        if (!data.events) return "";
         let html = '<div class="timeline-container">';
         data.events.forEach(e => {
             let color = e.type === 'loan' ? '#e0f2fe' : (e.type === 'payment' ? '#ffedd5' : '#f8fafc');
@@ -814,6 +849,54 @@ const app = {
             </div>`;
         });
         html += '</div>';
+        return html;
+    },
+
+    renderPaymentTimeline: function (data) {
+        // Group events by year to draw braces if needed, or just iterate flat
+        // The screenshot implies a continuous axis.
+
+        let html = '<div class="cashflow-container"><div class="cashflow-axis-wrapper">';
+
+        // Items
+        html += '<div>';
+        data.events.forEach(e => {
+            if (e.type === 'empty') {
+                // Gap year
+                html += `<div class="cashflow-item">
+                    <div style="height:35px;"></div> <!-- Spacer for amount -->
+                    <div class="cashflow-tick" style="height:10px; width:1px; background:#ccc;"></div>
+                    <div class="cashflow-date" style="color:#ccc;">${e.date}</div>
+                    <div class="cashflow-brace" style="border-color:#eee;"><div style="background:#eee;"></div></div>
+                    <div class="cashflow-year" style="color:#ccc;">${e.year}</div>
+                </div>`;
+                return;
+            }
+
+            const isNegative = e.amount && e.amount.includes('-');
+            const colorClass = isNegative ? 'negative' : 'positive';
+            const amountText = e.amount ? e.amount : '';
+
+            html += `<div class="cashflow-item">
+                <div class="cashflow-amount ${colorClass}">${amountText}</div>
+                <div class="cashflow-tick"></div>
+                <!-- Axis line runs below these via parent border -->
+                <div class="cashflow-date">${e.date}</div>
+                <div class="cashflow-brace"></div>
+                <div class="cashflow-year">${e.year}</div>
+            </div>`;
+        });
+        html += '</div>';
+
+        // Axis Line (absolute positioned or just border of a wrapper? 
+        // We used border-bottom on 'cashflow-axis' in CSS plan, but here I structure it as items.
+        // Let's inject the axis line div *behind* or *under* the items.
+        // Actually, CSS .cashflow-axis-wrapper items are inline-block. 
+        // We can put a div *under* the amounts but *above* the dates to act as the line.
+
+        html += '<div class="cashflow-axis"></div><div class="cashflow-label-aeg">aeg</div>';
+
+        html += '</div></div>';
         return html;
     },
 
