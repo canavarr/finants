@@ -3,12 +3,13 @@ const app = {
         questions: [],
         currentQuestionIndex: 0,
         userAnswers: [],
-        timeRemaining: 90 * 60,
+        targetEndTime: null, // Absolute timestamp
         timerInterval: null
     },
 
     init: function () {
         this.loadDashboardStats();
+        this.checkActiveSession();
 
         // Reset Logic
         const resetBtn = document.getElementById('resetBtn');
@@ -16,13 +17,66 @@ const app = {
             resetBtn.addEventListener('click', () => {
                 if (confirm('Kas oled kindel, et soovid ajaloo kustutada?')) {
                     localStorage.removeItem('financeExamHistory');
+                    localStorage.removeItem('financeExamActiveSession'); // Also clear active session
                     location.reload();
                 }
             });
         }
     },
 
-    // --- Data Persistence ---
+    // --- Persistence & Session Management ---
+    checkActiveSession: function () {
+        const savedSession = localStorage.getItem('financeExamActiveSession');
+        if (savedSession) {
+            try {
+                const session = JSON.parse(savedSession);
+                // Check if time is still valid
+                if (session.targetEndTime > Date.now()) {
+                    const resumeBtn = document.getElementById('resumeBtn');
+                    if (resumeBtn) {
+                        resumeBtn.classList.remove('hidden');
+                        resumeBtn.onclick = () => this.resumeExam(session);
+                    }
+                } else {
+                    // Session expired, clear it
+                    localStorage.removeItem('financeExamActiveSession');
+                }
+            } catch (e) {
+                console.error("Error parsing session", e);
+                localStorage.removeItem('financeExamActiveSession');
+            }
+        }
+    },
+
+    resumeExam: function (session) {
+        this.state.questions = session.questions;
+        this.state.currentQuestionIndex = session.currentQuestionIndex;
+        this.state.userAnswers = session.userAnswers;
+        this.state.targetEndTime = session.targetEndTime;
+
+        document.getElementById('startScreen').classList.add('hidden');
+        document.getElementById('resultsScreen').classList.add('hidden');
+        document.getElementById('examScreen').classList.remove('hidden');
+
+        this.startTimer();
+        this.showQuestion(this.state.currentQuestionIndex);
+    },
+
+    saveExamState: function () {
+        const session = {
+            questions: this.state.questions,
+            currentQuestionIndex: this.state.currentQuestionIndex,
+            userAnswers: this.state.userAnswers,
+            targetEndTime: this.state.targetEndTime
+        };
+        localStorage.setItem('financeExamActiveSession', JSON.stringify(session));
+    },
+
+    clearExamState: function () {
+        localStorage.removeItem('financeExamActiveSession');
+    },
+
+    // --- Data Persistence (Results) ---
     saveResult: function (score, total, chapterStats) {
         const result = {
             date: new Date().toISOString(),
@@ -51,10 +105,16 @@ const app = {
 
     // --- Exam Logic ---
     startExam: function () {
+        // Clear any old session first if starting new
+        this.clearExamState();
+
         this.selectQuestions();
         this.state.currentQuestionIndex = 0;
         this.state.userAnswers = [];
-        this.state.timeRemaining = 90 * 60; // 90 minutes
+
+        // Set Absolute End Time (90 mins from now)
+        this.state.targetEndTime = Date.now() + (90 * 60 * 1000);
+        this.saveExamState();
 
         document.getElementById('startScreen').classList.add('hidden');
         document.getElementById('resultsScreen').classList.add('hidden');
@@ -110,21 +170,32 @@ const app = {
         clearInterval(this.state.timerInterval);
 
         this.state.timerInterval = setInterval(() => {
-            this.state.timeRemaining--;
+            const now = Date.now();
+            const diff = this.state.targetEndTime - now;
 
-            const minutes = Math.floor(this.state.timeRemaining / 60);
-            const seconds = this.state.timeRemaining % 60;
+            if (diff <= 0) {
+                timerEl.textContent = "00:00";
+                this.endExam(true); // Auto-end
+                return;
+            }
 
+            // Calculate formatted time
+            const totalSecondsInput = Math.floor(diff / 1000);
+            const minutes = Math.floor(totalSecondsInput / 60);
+            const seconds = totalSecondsInput % 60;
             timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-            if (this.state.timeRemaining <= 300) { // 5 mins
-                timerEl.classList.add('warning');
+            // Warnings
+            timerEl.className = 'timer'; // Reset classes
+            if (minutes < 1) {
+                timerEl.classList.add('timer-warning-1');
+            } else if (minutes < 5) {
+                timerEl.classList.add('timer-warning-5');
+            } else if (minutes < 10) {
+                timerEl.classList.add('timer-warning-10');
             }
 
-            if (this.state.timeRemaining <= 0) {
-                this.endExam();
-            }
-        }, 1000);
+        }, 1000); // Update every second
     },
 
     showQuestion: function (index) {
@@ -225,11 +296,27 @@ const app = {
         });
 
         this.state.currentQuestionIndex++;
+
+        // Save state after every answer so we can resume
+        this.saveExamState();
+
         this.showQuestion(this.state.currentQuestionIndex);
     },
 
-    endExam: function () {
+    endExam: function (isAuto = false) {
         clearInterval(this.state.timerInterval);
+
+        // Clear active session since exam is done
+        this.clearExamState();
+
+        // Hide resume button if it was visible
+        const resumeBtn = document.getElementById('resumeBtn');
+        if (resumeBtn) resumeBtn.classList.add('hidden');
+
+        if (isAuto) {
+            alert("Aeg on läbi! Eksam esitatakse automaatselt.");
+        }
+
         document.getElementById('examScreen').classList.add('hidden');
         document.getElementById('resultsScreen').classList.remove('hidden');
 
