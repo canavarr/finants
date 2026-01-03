@@ -342,9 +342,26 @@ const app = {
 
         const percentage = Math.round((totalScore / maxScore) * 100) || 0;
 
-        // Render Score
+        // Calculate Grade
+        let grade = 'F';
+        let gradeClass = 'grade-F';
+
+        if (percentage >= 91) { grade = 'A'; gradeClass = 'grade-A'; }
+        else if (percentage >= 81) { grade = 'B'; gradeClass = 'grade-B'; }
+        else if (percentage >= 71) { grade = 'C'; gradeClass = 'grade-C'; }
+        else if (percentage >= 61) { grade = 'D'; gradeClass = 'grade-D'; }
+        else if (percentage >= 51) { grade = 'E'; gradeClass = 'grade-E'; }
+        else { grade = 'F'; gradeClass = 'grade-F'; }
+
+        // Render Score & Grade
         document.getElementById('finalScore').textContent = totalScore.toFixed(1);
         document.getElementById('percentage').textContent = percentage;
+
+        const gradeEl = document.getElementById('finalGrade');
+        if (gradeEl) {
+            gradeEl.textContent = grade;
+            gradeEl.className = 'grade-badge ' + gradeClass;
+        }
 
         // Save Stats
         this.saveResult(totalScore, maxScore, chapterStats);
