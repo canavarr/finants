@@ -281,11 +281,39 @@ const app = {
                         </span>
                     </div>`;
             }
-        }
-        statsContainer.innerHTML = statsHtml;
 
-        // Save History
-        this.saveResult(totalScore, maxScore, chapterStats);
+            // Show Correct Answer if wrong
+            if (!isCorrect) {
+                let correctDisplay = '';
+                if (item.question.type === 'dropdown' && item.question.matches) {
+                    // Build a list of correct matches "Item - Answer"
+                    correctDisplay = '<ul style="margin:5px 0 0 20px; padding:0; list-style-type:disc;">';
+                    item.question.matches.forEach(m => {
+                        correctDisplay += `<li><strong>${m.item}</strong>: ${m.correctAnswer}</li>`;
+                    });
+                    correctDisplay += '</ul>';
+                } else {
+                    correctDisplay = item.question.correctAnswer;
+                }
+
+                html += `
+                    <div class="correct-answer-box">
+                        <div style="font-weight:700; margin-bottom:4px;">Õige vastus:</div> 
+                        <div>${correctDisplay}</div>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div> <!-- End Feedback -->
+                </div> <!-- End Body -->
+            </div> <!-- End Card -->
+            `;
+        });
+
+        container.innerHTML = html;
+        // Scroll to top
+        window.scrollTo(0, 0);
     },
 
     checkAnswer: function (q, userAnswer) {
