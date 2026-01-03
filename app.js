@@ -83,7 +83,8 @@ const app = {
             score: score,
             total: total,
             percentage: Math.round((score / total) * 100),
-            chapterStats: chapterStats
+            chapterStats: chapterStats,
+            questionIds: this.state.userAnswers.map(ua => ua.questionId) // Save IDs for smart selection
         };
 
         let history = JSON.parse(localStorage.getItem('financeExamHistory') || '[]');
@@ -125,6 +126,32 @@ const app = {
     },
 
     selectQuestions: function () {
+        // 1. Get History to identifying seen questions
+        const history = JSON.parse(localStorage.getItem('financeExamHistory') || '[]');
+        const seenIds = new Set();
+        history.forEach(session => {
+            // Assume session has chapterStats but we need question level detail.
+            // Wait, standard saveResult doesn't save question IDs, only stats?
+            // Checking saveResult... it saves `result`.
+            // We need to check if we have question level data in history.
+            // app.js saveResult implementation: 
+            /*
+             saveResult: function (score, total, chapterStats) {
+                const result = { ..., score, total, chapterStats };
+                // It does NOT save the list of question IDs answered in that session.
+             }
+            */
+            // LIMITATION: We can't know exactly which questions were answered in past sessions 
+            // unless we update saveResult to store them. 
+            // However, we can assume for *future* sessions we will know.
+            // But for now, let's update saveResult first? 
+            // Or just check if `questions` or `ids` are there.
+
+            if (session.questionIds) {
+                session.questionIds.forEach(id => seenIds.add(id));
+            }
+        });
+
         // Group by chapter
         const byChapter = {};
         for (let i = 1; i <= 14; i++) {
@@ -132,37 +159,71 @@ const app = {
         }
 
         const selected = [];
-        const usedIds = new Set();
+        const currentSessionIds = new Set(); // To avoid dupes within THIS exam
+
+        const getWeightedPoints = (chapter) => {
+            const ch = parseInt(chapter);
+            if (ch <= 4) return 2.0;
+            if (ch <= 9) return 2.5;
+            return 3.0;
+        };
+
+        // Helper: pick one from candidates, prioritizing unseen
+        const pickOne = (candidates) => {
+            const unseen = candidates.filter(q => !seenIds.has(q.id) && !currentSessionIds.has(q.id));
+            const pool = unseen.length > 0 ? unseen : candidates.filter(q => !currentSessionIds.has(q.id));
+
+            if (pool.length === 0) return null; // Should not happen given data size vs 20 q
+
+            const picked = pool[Math.floor(Math.random() * pool.length)];
+            return picked;
+        };
 
         // 1. Pick one random question from each chapter (14 total)
         for (let i = 1; i <= 14; i++) {
             const chapterQuestions = byChapter[i];
             if (chapterQuestions && chapterQuestions.length > 0) {
-                const randomQ = chapterQuestions[Math.floor(Math.random() * chapterQuestions.length)];
-                selected.push(randomQ);
-                usedIds.add(randomQ.id);
+                const randomQ = pickOne(chapterQuestions);
+
+                if (randomQ) {
+                    // Create a copy to avoid mutating original and apply weight
+                    const qCopy = { ...randomQ };
+                    qCopy.points = getWeightedPoints(qCopy.chapter); // Override points
+
+                    selected.push(qCopy);
+                    currentSessionIds.add(randomQ.id);
+                }
             }
         }
 
         // 2. Fill the remaining 6 questions randomly from any chapter
-        // Create a pool of remaining questions
-        const remainingPool = ALL_QUESTIONS.filter(q => !usedIds.has(q.id));
+        // Pool of all valid remaining questions
+        let remainingPool = ALL_QUESTIONS.filter(q => !currentSessionIds.has(q.id));
 
-        // Shuffle the remaining pool to ensure random selection of the extra 6
-        remainingPool.sort(() => Math.random() - 0.5);
+        // Split into unseen and seen for prioritization
+        let unseenRest = remainingPool.filter(q => !seenIds.has(q.id));
+        let seenRest = remainingPool.filter(q => seenIds.has(q.id));
 
-        while (selected.length < 20 && remainingPool.length > 0) {
-            const extraQ = remainingPool.pop(); // Take from the shuffled pool
-            selected.push(extraQ);
+        // Shuffle both
+        unseenRest.sort(() => Math.random() - 0.5);
+        seenRest.sort(() => Math.random() - 0.5);
+
+        // Fill from unseen first, then seen
+        const fillPool = [...unseenRest, ...seenRest];
+
+        while (selected.length < 20 && fillPool.length > 0) {
+            const extraQ = fillPool.shift();
+            const qCopy = { ...extraQ };
+            qCopy.points = getWeightedPoints(qCopy.chapter);
+            selected.push(qCopy);
         }
 
         // 3. Sort the final exam by chapter (1 -> 14)
-        // This creates the "Easiest -> Hardest" flow requested
         this.state.questions = selected.sort((a, b) => {
             return parseInt(a.chapter) - parseInt(b.chapter);
         });
 
-        console.log("Selected & Sorted questions:", this.state.questions.map(q => q.chapter));
+        console.log("Selected questions:", this.state.questions.map(q => `Ch${q.chapter} ${seenIds.has(q.id) ? '(Seen)' : '(New)'}`));
     },
 
     startTimer: function () {
@@ -226,6 +287,7 @@ const app = {
 
         // Data Renderers
         if (q.tableData) html += this.renderTable(q.tableData);
+        if (q.table) html += this.renderTable(q.table); // Fix for questions using 'table' instead of 'tableData'
         if (q.sideBySideTables) html += this.renderSideBySideTables(q.sideBySideTables);
         if (q.inventoryData) html += this.renderInventoryData(q.inventoryData);
         if (q.bondDetails) html += this.renderBondDetails(q.bondDetails);
@@ -617,8 +679,22 @@ const app = {
         t += '<tbody>';
         if (data.rows) {
             data.rows.forEach(row => {
-                t += '<tr>';
-                row.forEach(cell => t += `<td>${cell}</td>`);
+                // Check for metadata at the end of the row
+                let rowData = [...row];
+                let meta = {};
+                const lastItem = rowData[rowData.length - 1];
+
+                if (typeof lastItem === 'object' && lastItem !== null) {
+                    meta = rowData.pop(); // Remove metadata from renderable items
+                }
+
+                // Apply styles based on metadata
+                let rowStyle = '';
+                if (meta.highlight) rowStyle += 'background-color: #fffbeb; font-weight: 600;';
+                if (meta.red) rowStyle += 'color: #ef4444;';
+
+                t += `<tr style="${rowStyle}">`;
+                rowData.forEach(cell => t += `<td>${cell}</td>`);
                 t += '</tr>';
             });
         }

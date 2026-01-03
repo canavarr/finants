@@ -262,3 +262,64 @@ input[type="text"]:focus {
 .hidden {
     display: none;
 }
+/* Result Cards - Vivid Colors */
+.result-card-correct {
+    border: 2px solid #10b981; /* Green-500 */
+    background: #f0fdf4; /* Green-50 */
+}
+
+.result-card-wrong {
+    border: 2px solid #ef4444; /* Red-500 */
+    background: #fef2f2; /* Red-50 */
+}
+
+/* Badges */
+.result-badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge-correct {
+    background: #10b981;
+    color: white;
+}
+
+.badge-wrong {
+    background: #ef4444;
+    color: white;
+}
+
+/* Icons */
+.icon-check {
+    color: #10b981;
+    font-size: 1.5rem;
+    margin-right: 12px;
+    font-weight: bold;
+}
+
+.icon-cross {
+    color: #ef4444;
+    font-size: 1.5rem;
+    margin-right: 12px;
+    font-weight: bold;
+}
+
+/* Feedback Box */
+.correct-answer-box {
+    margin-top: 16px;
+    padding: 12px;
+    background: #fff;
+    border-left: 4px solid #10b981;
+    border-radius: 0 4px 4px 0;
+    color: #064e3b; /* Dark Green */
+}
+
+.feedback-flex {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
