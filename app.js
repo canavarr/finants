@@ -496,7 +496,7 @@ const app = {
                 <div class="question-body">
                     <div class="question-text">${item.question.question}</div>
                     
-                    ${item.question.subQuestion ? `<div class="sub-question" style="color:#d63384;">${item.question.subQuestion}</div>` : ''}
+                    ${this.renderQuestionContext(item.question)}
 
                     <!-- Answer Feedback Area -->
                     <div style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">
@@ -660,6 +660,45 @@ const app = {
         container.scrollIntoView({ behavior: 'smooth' });
     },
 
+
+
+    // --- Render Context Helper (New) ---
+    renderQuestionContext: function (q) {
+        let html = '';
+
+        // Image
+        if (q.image) {
+            html += `<div style="text-align:center; margin: 20px 0;"><img src="${q.image}" style="max-width:100%; border-radius:8px; border:1px solid #ddd;"></div>`;
+        }
+
+        // Context Text
+        if (q.questionText) {
+            html += `<div class="sub-question">${q.questionText.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        // Subquestion (Pink prompts)
+        if (q.subQuestion) {
+            html += `<div class="sub-question" style="color: #d63384;">${q.subQuestion.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        // Data Renderers
+        if (q.tableData) html += this.renderTable(q.tableData);
+        if (q.table) html += this.renderTable(q.table);
+        if (q.sideBySideTables) html += this.renderSideBySideTables(q.sideBySideTables);
+        if (q.inventoryData) html += this.renderInventoryData(q.inventoryData);
+        if (q.bondDetails) html += this.renderBondDetails(q.bondDetails);
+        if (q.bondPriceInfo) html += this.renderBondPriceInfo(q.bondPriceInfo);
+        if (q.equityStatement) html += this.renderEquityStatement(q.equityStatement);
+        if (q.additionalInfo) html += this.renderAdditionalInfo(q.additionalInfo);
+        if (q.timeline) html += this.renderTimeline(q.timeline);
+
+        // Note
+        if (q.note) {
+            html += `<div style="font-size: 0.9rem; color: #6c757d; margin: 16px 0; font-style: italic;">${q.note}</div>`;
+        }
+
+        return html;
+    },
 
     // --- Render Helpers (Ported & Styled) ---
     renderTable: function (data) {

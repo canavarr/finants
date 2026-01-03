@@ -3150,7 +3150,7 @@ const ALL_QUESTIONS = [
     {
         id: 'kt4_q3',
         chapter: '14',
-        type: 'input',
+        type: 'dropdown',
         points: 2.5,
         question: 'AS ZZZ - omakapitali struktuur aktsiaseltsis',
         questionText: 'Antud on AS ZZZ finantsseisundi aruandest 31.12.2023 omakapitali väljavõte:',
@@ -3226,7 +3226,7 @@ const ALL_QUESTIONS = [
     {
         id: 'kt4_q5',
         chapter: '14',
-        type: 'input',
+        type: 'dropdown',
         points: 2.5,
         question: 'AS ZZZ - omakapitali struktuur aktsiaseltsis',
         questionText: 'Antud on AS ZZZ finantsseisundi aruandest 31.12.2023 omakapitali väljavõte:',
@@ -3328,7 +3328,7 @@ const ALL_QUESTIONS = [
     {
         id: 'kt4_q8',
         chapter: '14',
-        type: 'input',
+        type: 'dropdown',
         points: 2.5,
         question: 'AS ZZZ - omakapitali struktuur aktsiaseltsis',
         questionText: 'Antud on AS ZZZ finantsseisundi aruandest 31.12.2023 omakapitali väljavõte:',
@@ -3430,7 +3430,7 @@ const ALL_QUESTIONS = [
     {
         id: 'kt4_q11',
         chapter: '14',
-        type: 'input',
+        type: 'dropdown',
         points: 2.5,
         question: 'AS ZZZ - omakapitali struktuur aktsiaseltsis',
         questionText: 'Antud on AS ZZZ finantsseisundi aruandest 31.12.2023 omakapitali väljavõte:',
