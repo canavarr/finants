@@ -255,31 +255,88 @@ const app = {
 
         const percentage = Math.round((totalScore / maxScore) * 100) || 0;
 
-        // Render UI
-        const scoreAnim = document.getElementById('finalScore');
-        const percentAnim = document.getElementById('percentage');
+        // Render Score
+        document.getElementById('finalScore').textContent = totalScore.toFixed(1);
+        document.getElementById('percentage').textContent = percentage;
 
-        // Simple count up animation not strictly needed but nice
-        scoreAnim.textContent = totalScore.toFixed(1);
-        percentAnim.textContent = percentage;
+        // Save Stats
+        this.saveResult(totalScore, maxScore, chapterStats);
 
-        // Render Stats
-        const statsContainer = document.getElementById('chapterStats');
-        let statsHtml = '';
+        // Render Detailed Review List (New Overhaul)
+        this.renderDetailedReview(totalScore, maxScore);
+    },
 
-        for (let i = 1; i <= 14; i++) {
-            if (chapterStats[i]) {
-                const s = chapterStats[i];
-                const p = Math.round((s.earned / s.possible) * 100);
-                const isGood = p >= 50;
+    // --- New Detailed Review Renderer ---
+    renderDetailedReview: function () {
+        const container = document.getElementById('detailedReviewList');
+        if (!container) return;
 
-                statsHtml += `
-                    <div class="stat-item ${isGood ? 'correct-bg' : 'incorrect-bg'}">
-                        <span>Peatükk ${i} <span style="font-size:0.8em; color:#666;">(${s.count} küs)</span></span>
-                        <span class="stat-value ${isGood ? 'correct-text' : 'incorrect-text'}">
-                            ${s.earned.toFixed(1)} / ${s.possible.toFixed(1)} (${p}%)
-                        </span>
-                    </div>`;
+        let html = '';
+
+        this.state.userAnswers.forEach((item, idx) => {
+            const points = this.checkAnswer(item.question, item.answer);
+            const maxPoints = parseFloat(item.question.points);
+            const isCorrect = points === maxPoints;
+            const isPartial = points > 0 && points < maxPoints;
+
+            const cardClass = isCorrect ? 'result-card-correct' : (isPartial ? 'result-card-wrong' : 'result-card-wrong');
+            const badgeClass = isCorrect ? 'badge-correct' : 'badge-wrong';
+            const badgeText = isCorrect ? 'Correct answer' : (isPartial ? 'Partial' : 'Wrong answer');
+
+            // Icons
+            const iconCheck = `<span class="icon-check">✓</span>`;
+            const iconCross = `<span class="icon-cross">✕</span>`;
+
+            html += `
+            <div class="question-card ${cardClass}" style="margin-bottom: 40px; position:relative;">
+                <div style="position:absolute; top:-12px; left:0;">
+                    <span class="result-badge ${badgeClass}">${badgeText}</span>
+                </div>
+                
+                <div class="question-header-bar" style="margin-top:10px;">
+                    <span class="question-title">Question ${idx + 1}</span>
+                    <span class="question-points">${points.toFixed(1)} / ${maxPoints} pts</span>
+                </div>
+                
+                <div class="question-body">
+                    <div class="question-text">${item.question.question}</div>
+                    
+                    ${item.question.subQuestion ? `<div class="sub-question" style="color:#d63384;">${item.question.subQuestion}</div>` : ''}
+
+                    <!-- Answer Feedback Area -->
+                    <div style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">
+            `;
+
+            // Render specific answer feedback based on type
+            if (item.question.type === 'dropdown' && item.question.matches) {
+                // Dropdown Matches Feedback
+                item.question.matches.forEach((m, i) => {
+                    const userAns = Array.isArray(item.answer) ? item.answer[i] : '';
+                    const rowCorrect = userAns === m.correctAnswer;
+
+                    html += `
+                        <div class="match-row">
+                            <div class="feedback-flex" style="flex:1;">
+                                ${rowCorrect ? iconCheck : iconCross}
+                                <label style="margin:0;">${m.item}</label>
+                            </div>
+                            <div style="flex:0 0 300px;">
+                                <div style="padding:8px 12px; background:#eee; border:1px solid #ccc; border-radius:4px; color:#555;">
+                                    ${userAns || '(tühi)'}
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            } else {
+                // Single Answer Feedback
+                html += `
+                    <div class="feedback-flex">
+                        ${isCorrect ? iconCheck : iconCross}
+                        <div style="font-weight:600; font-size:1.1rem; color:#333;">
+                            ${String(item.answer) || '(tühi)'}
+                        </div>
+                    </div>
+                `;
             }
 
             // Show Correct Answer if wrong
