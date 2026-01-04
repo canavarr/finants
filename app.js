@@ -144,6 +144,12 @@ const app = {
 
         this.startTimer();
         this.showQuestion(0);
+
+        this.startTimer();
+        this.showQuestion(0);
+
+        // Track Start
+        if (window.examAnalytics) window.examAnalytics.logStart('standard');
     },
 
     startWeaknessExam: function () {
@@ -228,7 +234,11 @@ const app = {
         document.getElementById('examScreen').classList.remove('hidden');
 
         this.startTimer();
+        this.startTimer();
         this.showQuestion(0);
+
+        // Track Start (Training Mode)
+        if (window.examAnalytics) window.examAnalytics.logStart('weakness_training');
 
         alert(`Alustan treeningut sinu nõrgimate peatükkidega: ${targetChapters.join(', ')}`);
     },
@@ -466,6 +476,11 @@ const app = {
 
         this.state.currentQuestionIndex++;
 
+        this.state.currentQuestionIndex++;
+
+        // Track Progress
+        if (window.examAnalytics) window.examAnalytics.logProgress(this.state.currentQuestionIndex);
+
         // Save state after every answer so we can resume
         this.saveExamState();
 
@@ -538,6 +553,19 @@ const app = {
 
         // Save Stats
         this.saveResult(totalScore, maxScore, chapterStats, durationSeconds);
+
+        // Track End
+        if (window.examAnalytics) {
+            // Identify incorrect questions
+            const incorrectIds = this.state.userAnswers
+                .filter(item => this.checkAnswer(item.question, item.answer) < parseFloat(item.question.points))
+                .map(item => item.questionId);
+
+            window.examAnalytics.logEnd(totalScore, maxScore, grade, {
+                seconds: durationSeconds,
+                chapterStats: chapterStats
+            }, incorrectIds);
+        }
 
         // Show Time Taken
         const mins = Math.floor(durationSeconds / 60);
