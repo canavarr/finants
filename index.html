@@ -110,11 +110,15 @@
 
 
 
+
+
     <!-- Firebase Integration -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
+
+
 
         // --- PASTE YOUR FIREBASE CONFIG HERE ---
         const firebaseConfig = {
@@ -133,6 +137,8 @@
         let analytics;
         let trackingEnabled = false;
 
+
+
         if (firebaseConfig.apiKey !== "REPLACE_WITH_YOUR_API_KEY") {
             try {
                 const app = initializeApp(firebaseConfig);
@@ -140,11 +146,14 @@
                 analytics = getAnalytics(app);
                 trackingEnabled = true;
                 console.log("Firebase initialized successfully");
+
             } catch (e) {
                 console.error("Firebase init failed:", e);
+
             }
         } else {
             console.log("Firebase config missing - tracking disabled");
+
         }
 
         // Expose helpers for app.js
@@ -154,6 +163,7 @@
             logStart: async function (mode = 'standard') {
                 if (!trackingEnabled) return;
                 try {
+
                     const docRef = await addDoc(collection(db, "exam_attempts"), {
                         startedAt: serverTimestamp(),
                         userAgent: navigator.userAgent,
@@ -164,9 +174,11 @@
                     });
                     this.currentAttemptId = docRef.id;
                     logEvent(analytics, 'exam_started', { mode: mode });
+
                 } catch (e) {
                     // Fail silently so exam flow is never interrupted
                     console.error("Analytics Error (Start):", e);
+
                 }
             },
 
@@ -186,6 +198,7 @@
             logEnd: async function (score, total, grade, durationDetails, incorrectQuestionIds) {
                 if (!trackingEnabled || !this.currentAttemptId) return;
                 try {
+
                     const ref = doc(db, "exam_attempts", this.currentAttemptId);
                     await updateDoc(ref, {
                         finishedAt: serverTimestamp(),
@@ -198,8 +211,10 @@
                         incorrectQuestionIds: incorrectQuestionIds || []
                     });
                     logEvent(analytics, 'exam_completed', { score: score, grade: grade });
+                    updateStatus("Firebase: Andmed saadetud", "green");
                 } catch (e) {
                     console.error("Analytics Error (End):", e);
+                    updateStatus("Firebase: Viga salvestamisel", "red");
                 }
             }
         };
