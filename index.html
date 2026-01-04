@@ -44,17 +44,29 @@
                     style="padding: 12px 32px; font-size: 1.1rem; margin-right: 10px; margin-bottom: 10px;">
                     Jätka pooleli olevat eksamit
                 </button>
-                <button onclick="app.startExam()" class="btn btn-primary"
-                    style="padding: 12px 32px; font-size: 1.1rem;">
-                    Alusta Eksamit
-                </button>
+                <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+                    <button onclick="app.startExam()" class="btn btn-primary"
+                        style="padding: 12px 32px; font-size: 1.1rem;">
+                        Alusta Eksamit
+                    </button>
+                    <button onclick="app.startWeaknessExam()" class="btn btn-secondary"
+                        style="padding: 10px 24px; font-size: 1rem; border:1px solid var(--accent); color: var(--accent); background:white;">
+                        Treeni nõrku kohti
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- Exam Screen -->
         <div id="examScreen" class="hidden">
             <div class="exam-top-bar">
-                <div class="timer" id="timer">90:00</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="timer" id="timer">90:00</div>
+                    <button onclick="app.toggleFormulas()" class="btn btn-secondary"
+                        style="padding: 6px 12px; font-size: 0.9rem;">
+                        ƒx Valemid
+                    </button>
+                </div>
                 <div>Küsimus <span id="currentQ">1</span> / 20</div>
             </div>
 
@@ -62,7 +74,12 @@
                 <!-- Question content injected here -->
             </div>
 
-            <div class="navigation" style="text-align: right;">
+            <div class="navigation"
+                style="text-align: right; display: flex; justify-content: space-between; margin-top: 20px;">
+                <button onclick="if(confirm('Oled kindel, et soovid eksami lõpetada?')) app.endExam(true)"
+                    class="btn btn-secondary" style="background: #e2e8f0; color: #1e293b; border: none;">
+                    Lõpeta eksam
+                </button>
                 <button onclick="app.submitAnswer()" class="btn btn-primary">
                     Järgmine Küsimus
                 </button>
@@ -93,6 +110,68 @@
 
             <div style="text-align: center;">
                 <button onclick="location.reload()" class="btn btn-primary">Alusta Uuesti</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formula Modal -->
+    <div id="formulaModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Valemileht</h3>
+                <button onclick="app.toggleFormulas()" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="formula-group">
+                    <h4>Finantssuhtarvud</h4>
+                    <div class="formula-item">
+                        <span>Lühiajalise võlgnevuse kattekordaja (Current Ratio)</span>
+                        <code>Käibevara / Lühiajalised kohustised</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Maksevõime kordaja (Quick Ratio)</span>
+                        <code>(Käibevara - Varud) / Lühiajalised kohustised</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Võlakordaja (Debt Ratio)</span>
+                        <code>Kohustised kokku / Varad kokku</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Koguvara rentaablus (ROA)</span>
+                        <code>Puhaskasum / Varad kokku</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Omakapitali rentaablus (ROE)</span>
+                        <code>Puhaskasum / Omakapital kokku</code>
+                    </div>
+                </div>
+
+                <div class="formula-group">
+                    <h4>Raha ajaväärtus (TVM)</h4>
+                    <div class="formula-item">
+                        <span>Lihtintress</span>
+                        <code>I = P * r * t</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Tuleviku väärtus (FV)</span>
+                        <code>FV = PV * (1 + r)^n</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Nüüdisväärtus (PV)</span>
+                        <code>PV = FV / (1 + r)^n</code>
+                    </div>
+                    <div class="formula-item">
+                        <span>Annuiteedi nüüdisväärtus (PVA)</span>
+                        <code>PVA = PMT * [(1 - (1 + r)^-n) / r]</code>
+                    </div>
+                </div>
+
+                <div class="formula-group">
+                    <h4>Raamatupidamise põhivõrrand</h4>
+                    <div class="formula-item text-center">
+                        <strong style="font-size:1.2em;">VARAD = KOHUSTISED + OMAKAPITAL</strong>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

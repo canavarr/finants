@@ -126,6 +126,7 @@ const app = {
     startExam: function () {
         // Clear any old session first if starting new
         this.clearExamState();
+        this.state.isWeaknessMode = false; // Reset mode
 
         this.selectQuestions();
         this.state.currentQuestionIndex = 0;
@@ -143,6 +144,93 @@ const app = {
 
         this.startTimer();
         this.showQuestion(0);
+    },
+
+    startWeaknessExam: function () {
+        // 1. Analyze History
+        const history = JSON.parse(localStorage.getItem('financeExamHistory') || '[]');
+        if (history.length === 0) {
+            alert("Sul puudub ajalugu! Tee enne mõned tavalised eksamid.");
+            return;
+        }
+
+        const chapterPerformance = {}; // { ch1: { correct: 2, total: 5 }, ... }
+
+        history.forEach(h => {
+            if (h.chapterStats) {
+                for (const [ch, stats] of Object.entries(h.chapterStats)) {
+                    if (!chapterPerformance[ch]) chapterPerformance[ch] = { correct: 0, total: 0 };
+                    chapterPerformance[ch].correct += stats.correct; // Assuming we saved this? Check save logic. 
+                    // Wait, chapterStats in saveResult creates simple objects?
+                    // Let's check saveResult logic first.
+                }
+            }
+        });
+
+        // Actually, let's look at saveResult properties.
+        // It saves: chapterStats[ch] = { total: x, correct: y, percentage: z }
+        // So yes, we can aggregate.
+
+        history.forEach(h => {
+            if (h.chapterStats) {
+                for (const [ch, stats] of Object.entries(h.chapterStats)) {
+                    if (!chapterPerformance[ch]) chapterPerformance[ch] = { correct: 0, total: 0 };
+                    chapterPerformance[ch].correct += stats.correct || 0;
+                    chapterPerformance[ch].total += stats.total || 0;
+                }
+            }
+        });
+
+        // Calculate %
+        const weakChapters = [];
+        for (const [ch, data] of Object.entries(chapterPerformance)) {
+            const pct = data.total > 0 ? (data.correct / data.total) * 100 : 0;
+            if (pct < 60) { // Weakness threshold
+                weakChapters.push({ ch, pct });
+            }
+        }
+
+        // Sort by lowest percentage
+        weakChapters.sort((a, b) => a.pct - b.pct);
+
+        // Take top 5 weakest or all if fewer
+        const targetChapters = weakChapters.slice(0, 5).map(x => x.ch);
+
+        if (targetChapters.length === 0) {
+            alert("Sul on kõikides peatükkides suurepärased tulemused! Treenimiseks pole midagi.");
+            return;
+        }
+
+        // Start Exam with Filter
+        this.clearExamState();
+        this.state.isWeaknessMode = true;
+
+        // Select Questions Logic for Weakness
+        // Filter ALL_QUESTIONS by targetChapters
+        // Pick random 15
+        const pool = ALL_QUESTIONS.filter(q => targetChapters.includes(q.chapter));
+
+        // Shuffle
+        pool.sort(() => Math.random() - 0.5);
+        this.state.questions = pool.slice(0, 15); // 15 questions limit
+
+        // Assign Points (Standardize to say 2.5 or keep original weights? Keep original for simplicity in this mode)
+        // Or re-normalize? Let's just keep original points but maybe clamp total?
+        // Actually the result screen expects maxScore. It's fine.
+
+        this.state.currentQuestionIndex = 0;
+        this.state.userAnswers = [];
+        this.state.startTime = Date.now();
+        this.state.targetEndTime = this.state.startTime + (60 * 60 * 1000); // 60 mins for short exam
+
+        document.getElementById('startScreen').classList.add('hidden');
+        document.getElementById('resultsScreen').classList.add('hidden');
+        document.getElementById('examScreen').classList.remove('hidden');
+
+        this.startTimer();
+        this.showQuestion(0);
+
+        alert(`Alustan treeningut sinu nõrgimate peatükkidega: ${targetChapters.join(', ')}`);
     },
 
     selectQuestions: function () {
@@ -294,28 +382,15 @@ const app = {
             <div class="question-card">
                 <div class="question-header-bar">
                     <span class="question-title">Question ${index + 1}</span>
-                    <span class="question-points">${q.points} / ${q.points} pts</span>
-                </div>
-                <div class="question-body">
-                    <!-- Standard Question Text -->
-                    <div class="question-text">${q.question}</div>
+                <span class="question-points">${q.points} pts</span>
+            </div>
+            <div class="question-body">
+                <!-- Standard Question Text -->
+                <div class="question-text">${q.question}</div>
         `;
 
-        // Subquestion / Additional Context
-        if (q.questionText) html += `<div class="sub-question">${q.questionText.replace(/\n/g, '<br>')}</div>`;
-        if (q.subQuestion) html += `<div class="sub-question" style="color: #d63384;">${q.subQuestion}</div>`; // Using a distinct color like in screenshot if needed, or Keep blue
-
-        // Data Renderers
-        if (q.tableData) html += this.renderTable(q.tableData);
-        if (q.table) html += this.renderTable(q.table); // Fix for questions using 'table' instead of 'tableData'
-        if (q.sideBySideTables) html += this.renderSideBySideTables(q.sideBySideTables);
-        if (q.inventoryData) html += this.renderInventoryData(q.inventoryData);
-        if (q.bondDetails) html += this.renderBondDetails(q.bondDetails);
-        if (q.bondPriceInfo) html += this.renderBondPriceInfo(q.bondPriceInfo);
-        if (q.equityStatement) html += this.renderEquityStatement(q.equityStatement);
-        if (q.additionalInfo) html += this.renderAdditionalInfo(q.additionalInfo);
-        if (q.timeline) html += this.renderTimeline(q.timeline);
-        if (q.note) html += `<div style="font-size: 0.9rem; color: #6c757d; margin: 16px 0; font-style: italic;">${q.note}</div>`;
+        // Use Helper for all context
+        html += this.renderQuestionContext(q);
 
         // Input Area
         html += '<div style="margin-top: 32px; background: #fff; padding-top: 20px; border-top: 1px solid #eee;">';
@@ -361,15 +436,27 @@ const app = {
         const q = this.state.questions[this.state.currentQuestionIndex];
         let answer;
 
+        // --- VALIDATION START ---
+        let isValid = false;
+
         if (q.type === 'dropdown' && q.matches) {
-            answer = q.matches.map((_, i) => {
-                const el = document.getElementById(`answer_${i}`);
-                return el ? el.value : '';
-            });
+            // Check if ALL dropdowns have a value selected
+            const inputs = q.matches.map((_, i) => document.getElementById(`answer_${i}`));
+            const allFilled = inputs.every(el => el && el.value !== "");
+            if (allFilled) isValid = true;
+
+            answer = inputs.map(el => el ? el.value : '');
         } else {
             const el = document.getElementById('answer_0');
             answer = el ? el.value : '';
+            if (answer && answer.trim() !== "") isValid = true;
         }
+
+        if (!isValid) {
+            alert("Palun vasta küsimusele enne jätkamist!");
+            return;
+        }
+        // --- VALIDATION END ---
 
         this.state.userAnswers.push({
             questionId: q.id,
@@ -566,6 +653,15 @@ const app = {
         container.innerHTML = html;
         // Scroll to top
         window.scrollTo(0, 0);
+    },
+
+    toggleFormulas: function () {
+        const modal = document.getElementById('formulaModal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+        } else {
+            modal.classList.add('hidden');
+        }
     },
 
     checkAnswer: function (q, userAnswer) {
