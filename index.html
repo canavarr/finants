@@ -155,7 +155,11 @@
             currentAttemptId: null,
 
             logStart: async function (mode = 'standard') {
-                if (!trackingEnabled) return;
+                console.log("DEBUG: logStart called. Tracking enabled?", trackingEnabled);
+                if (!trackingEnabled) {
+                    console.warn("DEBUG: Tracking is DISABLED, aborting logStart.");
+                    return;
+                }
                 try {
 
                     await addDoc(collection(db, "exam_attempts"), {
