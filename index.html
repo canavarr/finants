@@ -173,11 +173,8 @@
                         lastQuestionIndex: 0
                     }).then(docRef => {
                         this.currentAttemptId = docRef.id;
+                        console.log("%c EXAM STARTED: Data Sent to Firebase! ID: " + docRef.id, "background: green; color: white; padding: 4px; font-size: 14px;");
                     });
-
-                    logEvent(analytics, 'exam_started', { mode: mode });
-
-                } catch (e) {
 
                     logEvent(analytics, 'exam_started', { mode: mode });
 
