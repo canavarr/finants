@@ -139,21 +139,15 @@
 
 
 
-        if (firebaseConfig.apiKey !== "REPLACE_WITH_YOUR_API_KEY") {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                analytics = getAnalytics(app);
-                trackingEnabled = true;
-                console.log("Firebase initialized successfully");
-
-            } catch (e) {
-                console.error("Firebase init failed:", e);
-
-            }
-        } else {
-            console.log("Firebase config missing - tracking disabled");
-
+        // Initialize directly to ensure it runs
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            analytics = getAnalytics(app);
+            trackingEnabled = true;
+            console.log("%c Firebase Initialized Successfully", "background: green; color: white; padding: 4px;");
+        } catch (e) {
+            console.error("%c Firebase Init Failed: " + e.message, "background: red; color: white; padding: 4px;");
         }
 
         // Expose helpers for app.js
@@ -211,10 +205,10 @@
                         incorrectQuestionIds: incorrectQuestionIds || []
                     });
                     logEvent(analytics, 'exam_completed', { score: score, grade: grade });
-                    updateStatus("Firebase: Andmed saadetud", "green");
+
                 } catch (e) {
                     console.error("Analytics Error (End):", e);
-                    updateStatus("Firebase: Viga salvestamisel", "red");
+
                 }
             }
         };
