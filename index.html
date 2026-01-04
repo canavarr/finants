@@ -161,18 +161,28 @@
                     return;
                 }
                 try {
+                    console.log(`DEBUG: Protocol: ${window.location.protocol}, Host: ${window.location.host}`);
 
-                    await addDoc(collection(db, "exam_attempts"), {
+                    // Create a timeout promise
+                    const timeout = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error("Request timed out (Firewall/Network issue?)")), 5000)
+                    );
+
+                    const dbRequest = addDoc(collection(db, "exam_attempts"), {
                         startedAt: serverTimestamp(),
                         userAgent: navigator.userAgent,
                         platform: navigator.platform,
                         status: 'started',
                         mode: mode,
                         lastQuestionIndex: 0
-                    }).then(docRef => {
+                    });
+
+                    // Race them
+                    await Promise.race([dbRequest, timeout]).then(docRef => {
                         this.currentAttemptId = docRef.id;
                         console.log("%c EXAM STARTED: Data Sent to Firebase! ID: " + docRef.id, "background: green; color: white; padding: 4px; font-size: 14px;");
                     });
+
                     logEvent(analytics, 'exam_started', { mode: mode });
 
                 } catch (e) {
