@@ -158,21 +158,25 @@
                 if (!trackingEnabled) return;
                 try {
 
-                    const docRef = await addDoc(collection(db, "exam_attempts"), {
+                    await addDoc(collection(db, "exam_attempts"), {
                         startedAt: serverTimestamp(),
                         userAgent: navigator.userAgent,
                         platform: navigator.platform,
                         status: 'started',
                         mode: mode,
                         lastQuestionIndex: 0
+                    }).then(docRef => {
+                        this.currentAttemptId = docRef.id;
+                        console.log("%c EXAM STARTED: Data Sent to Firebase! ID: " + docRef.id, "background: green; color: white; padding: 4px; font-size: 14px;");
                     });
-                    this.currentAttemptId = docRef.id;
                     logEvent(analytics, 'exam_started', { mode: mode });
 
                 } catch (e) {
-                    // Fail silently so exam flow is never interrupted
-                    console.error("Analytics Error (Start):", e);
-
+                    console.error("%c EXAM START FAILED: " + e.message, "background: red; color: white; padding: 4px; font-size: 14px;");
+                    // Check for permission denied specifically
+                    if (e.message.includes("permission-denied")) {
+                        console.error("%c CHECK FIRESTORE RULES!", "background: yellow; color: black; font-size: 20px; font-weight: bold;");
+                    }
                 }
             },
 
