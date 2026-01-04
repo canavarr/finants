@@ -655,15 +655,6 @@ const app = {
         window.scrollTo(0, 0);
     },
 
-    toggleFormulas: function () {
-        const modal = document.getElementById('formulaModal');
-        if (modal.classList.contains('hidden')) {
-            modal.classList.remove('hidden');
-        } else {
-            modal.classList.add('hidden');
-        }
-    },
-
     checkAnswer: function (q, userAnswer) {
         if (q.type === 'dropdown') {
             if (q.matches) {
